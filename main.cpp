@@ -1,6 +1,8 @@
 #include <iostream>
 #include <mysql.h>
 #include <string>
+#include <limits>
+#include <cstring>
 
 using namespace std;
 
@@ -14,6 +16,32 @@ void delete_doctors(MYSQL *conn);
 void patient_management(MYSQL *conn);
 void appointment_management(MYSQL *conn);
 void medicine_management(MYSQL *conn);
+
+void dashboard(MYSQL *conn); // dashboard function prototypes
+void dashboard(MYSQL *conn)  // query function
+{
+    string query = "SELECT (SELECT COUNT(*) FROM Doctors) AS Total_Doctors, (SELECT COUNT(*) FROM Patients) AS Total_Patients, (SELECT COUNT(*) FROM Appointments) AS Total_Appointments, (SELECT COUNT(*) FROM Medicine) AS Total_Medicines, (SELECT COALESCE(SUM(Stock_quantity), 0) FROM Medicine) AS Total_Stock, (SELECT COUNT(*) FROM Medicine WHERE Stock_quantity <= 10) AS Low_Stock_Medicines";
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        MYSQL_RES *res = mysql_store_result(conn);
+        if (res != NULL)
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            cout << "\n===== HOSPITAL DASHBOARD =====\n";
+            cout << "Total Doctors: " << row[0] << endl;
+            cout << "Total Patients: " << row[1] << endl;
+            cout << "Total Appointments: " << row[2] << endl;
+            cout << "Total Medicines: " << row[3] << endl;
+            cout << "Total Medicine Stock: " << row[4] << endl;
+            cout << "Low Stock Medicines (10 or less): " << row[5] << endl;
+            mysql_free_result(res);
+        }
+    }
+    else
+    {
+        cout << "Dashboard query failed: " << mysql_error(conn) << endl;
+    }
+}
 
 int main()
 {
@@ -39,39 +67,43 @@ int main()
     do
     {
         cout << "\nHospital Management System:\n";
-        cout << "1. Doctor Management\n";
-        cout << "2. Patient Management\n";
-        cout << "3. Appointment Management\n";
-        cout << "4. Medicine Management\n";
-        cout << "5. Exit\n";
+        cout << "1. Dashboard\n";
+        cout << "2. Doctor Management\n";
+        cout << "3. Patient Management\n";
+        cout << "4. Appointment Management\n";
+        cout << "5. Medicine Management\n";
+        cout << "6. Exit\n";
         cout << "Enter your choice: ";
         cin >> choice;
 
         switch (choice)
         {
         case 1:
+            dashboard(conn);
+            break;
+        case 2:
             // cout << "\n[Doctor Management Module - Under Development]\n";
             doctor_management(conn); // sub menu
             break;
-        case 2:
+        case 3:
             // cout << "\n[Patient Management Module - Under Development]\n";
             patient_management(conn);
             break;
-        case 3:
+        case 4:
             // cout << "\n[Appointment Management Module - Under Development]\n";
             appointment_management(conn);
             break;
-        case 4:
+        case 5:
             // cout << "\n[Medicine Management Module - Under Development]\n";
             medicine_management(conn);
             break;
-        case 5:
+        case 6:
             cout << "\nExiting system... Thank you!\n";
             break;
         default:
             cout << "\nInvalid choice! Please try again.\n";
         }
-    } while (choice != 5);
+    } while (choice != 6);
 
     mysql_close(conn);
     return 0;
@@ -138,7 +170,6 @@ void add_doctors(MYSQL *conn)
              << mysql_error(conn) << endl;
     }
 }
-
 // View Doctors Function (SELECT query)
 void view_doctors(MYSQL *conn)
 {
