@@ -12,6 +12,7 @@ void add_doctors(MYSQL *conn);
 void view_doctors(MYSQL *conn);
 void update_doctor(MYSQL *conn);
 void delete_doctors(MYSQL *conn);
+void search_doctor(MYSQL *conn);
 
 void patient_management(MYSQL *conn);
 void appointment_management(MYSQL *conn);
@@ -119,7 +120,8 @@ void doctor_management(MYSQL *conn)
         cout << "2. view all doctors:" << endl;
         cout << "3. update doctor info: " << endl;
         cout << "4. delete doctor:" << endl;
-        cout << "5. back to main menu: " << endl;
+        cout << "5. search doctotr : " << endl;
+        cout << "6. back to main menu: " << endl;
         cout << "enter your choice: " << endl;
         cin >> choice;
         switch (choice)
@@ -137,6 +139,9 @@ void doctor_management(MYSQL *conn)
             delete_doctors(conn);
             break;
         case 5:
+            search_doctor(conn);
+            break;
+        case 6:
             cout << "retruning to main menu: " << endl;
             break;
 
@@ -144,7 +149,7 @@ void doctor_management(MYSQL *conn)
             cout << "invalid input: " << endl;
             break;
         }
-    } while (choice != 5);
+    } while (choice != 6);
 }
 
 // add doctor function //
@@ -303,11 +308,54 @@ void delete_doctors(MYSQL *conn)
     }
 }
 
+void search_doctor(MYSQL *conn)
+{
+    string spec;
+    cout << "enter doctor Specialization: " << endl;
+    cin.ignore();
+    getline(cin, spec);
+    string query = "SELECT * FROM Doctors WHERE Specialization = '" + spec + "'";
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        MYSQL_RES *res = mysql_store_result(conn);
+        if (res == nullptr)
+        {
+            cout << "connectin error..." << mysql_error(conn) << endl;
+        }
+        else
+        {
+            MYSQL_ROW row;
+            int count = 0;
+            while ((row = mysql_fetch_row(res)) != nullptr)
+            {
+                cout << "doctor_id : " << row[0] << endl;
+                cout << "Name : " << row[1] << endl;
+                cout << "Specialization : " << row[2] << endl;
+                cout << "Phone : "
+                     << row[3] << endl
+                     << endl;
+                count++;
+            }
+            if (count == 0)
+            {
+                cout << "No value found: " << endl;
+            }
+
+            mysql_free_result(res);
+        }
+    }
+    else
+    {
+        cout << "error..." << mysql_error(conn);
+    }
+}
+
 // Patient management function
 void add_patient(MYSQL *conn);
 void view_patient(MYSQL *conn);
 void update_patient(MYSQL *conn);
 void delete_patient(MYSQL *conn);
+void search_patient(MYSQL *conn);
 void patient_management(MYSQL *conn)
 {
     int choice;
@@ -318,7 +366,8 @@ void patient_management(MYSQL *conn)
         cout << "2. view patient details: " << endl;
         cout << "3. update patient info" << endl;
         cout << "4 Delete patient details:" << endl;
-        cout << "5. returning to main menu: " << endl;
+        cout << "5. search patient details: " << endl;
+        cout << "6. returning to main menu: " << endl;
         cout << "enter your choice: " << endl;
         cin >> choice;
         switch (choice)
@@ -336,12 +385,15 @@ void patient_management(MYSQL *conn)
             delete_patient(conn);
             break;
         case 5:
+            search_patient(conn);
+            break;
+        case 6:
             cout << "Returning to main menu : " << endl;
             break;
         default:
             break;
         }
-    } while (choice != 5);
+    } while (choice != 6);
 }
 
 void add_patient(MYSQL *conn)
@@ -523,6 +575,48 @@ void delete_patient(MYSQL *conn)
     else
     {
         cout << "Error: " << mysql_error(conn) << endl;
+    }
+}
+
+void search_patient(MYSQL *conn)
+{
+    int id;
+    cout << "enter patient id: " << endl;
+    cin >> id;
+    cin.ignore();
+    string query = "select * from Patients where Patient_id = " + to_string(id);
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        // cout << "Search succesfull: " << endl;
+        MYSQL_RES *res = mysql_store_result(conn);
+        if (res == nullptr)
+        {
+            cout << "error: " << mysql_errno(conn);
+        }
+        else
+        {
+            MYSQL_ROW row = mysql_fetch_row(res);
+            if (row != nullptr)
+            {
+                cout << "patient details: \n"
+                     << endl;
+                cout << "patient id " << row[0] << endl;
+                cout << "name " << row[1] << endl;
+                cout << "age " << row[2] << endl;
+                cout << "gender " << row[3] << endl;
+                cout << "phone " << row[4] << endl
+                     << endl;
+            }
+            else
+            {
+                cout << "no value found: " << endl;
+            }
+            mysql_free_result(res);
+        }
+    }
+    else
+    {
+        cout << "error : " << mysql_error(conn);
     }
 }
 
