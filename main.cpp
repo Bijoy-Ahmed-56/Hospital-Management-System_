@@ -625,6 +625,8 @@ void addAppointment(MYSQL *conn);
 void viewAppointments(MYSQL *conn);
 void update_appointment(MYSQL *conn);
 void deleteAppointment(MYSQL *conn);
+void appointment_status_update(MYSQL *conn);
+
 void appointment_management(MYSQL *conn)
 {
     int choice;
@@ -635,7 +637,8 @@ void appointment_management(MYSQL *conn)
         cout << "2. View All Appointments\n";
         cout << "3. Update appointment: " << endl;
         cout << "4. Cancel Appointment\n";
-        cout << "5. Back to Main Menu\n";
+        cout << "5. appointment status : \n";
+        cout << "6. Back to Main Menu\n";
         cout << "Enter your choice: ";
         cin >> choice;
 
@@ -654,12 +657,15 @@ void appointment_management(MYSQL *conn)
             deleteAppointment(conn);
             break;
         case 5:
+            appointment_status_update(conn);
+            break;
+        case 6:
             cout << "Returning to Main Menu...\n";
             break;
         default:
             cout << "Invalid choice! Try again.\n";
         }
-    } while (choice != 5);
+    } while (choice != 6);
 }
 
 // Book Appointment Function (INSERT query)
@@ -677,6 +683,33 @@ void addAppointment(MYSQL *conn)
     cout << "Enter Appointment Date (e.g., 2026-10-25): ";
     getline(cin, app_date);
 
+    // Chech existing appointment
+    string check_query = "SELECT Appointment_id FROM Appointments WHERE Doctor_id = " + to_string(doctor_id) +
+                         " AND Appointment_date = '" + app_date +
+                         "' AND Appointment_Status != 'Cancelled'";
+
+    if (mysql_query(conn, check_query.c_str()) != 0)
+    {
+        cout << "\n[Error] Failed to check appointment: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    MYSQL_RES *res = mysql_store_result(conn);
+    if (res == nullptr)
+    {
+        cout << "\n[Error] Failed to get appointment result: " << mysql_error(conn) << endl;
+        return;
+    }
+
+    if (mysql_num_rows(res) > 0)
+    {
+        cout << "\n[Error] This doctor already has an appointment on this date!\n";
+        mysql_free_result(res);
+        return;
+    }
+    mysql_free_result(res);
+
+    // Insert new appointment only if no duplicate exists
     string query = "INSERT INTO Appointments (Doctor_id, Patient_id, Appointment_date) VALUES (" + to_string(doctor_id) + ", " + to_string(patient_id) + ", '" + app_date + "')";
 
     if (mysql_query(conn, query.c_str()) == 0)
@@ -706,7 +739,7 @@ void viewAppointments(MYSQL *conn)
         cout << "\n=====================================================\n";
         cout << "                 APPOINTMENT LIST                    \n";
         cout << "=====================================================\n";
-        cout << "Appt ID\t | Patient ID\t | Doctor ID\t | Date\n";
+        cout << "Appt ID\t | Patient ID\t | Doctor ID\t | Date\t | Status\n";
         cout << "-----------------------------------------------------\n";
 
         while ((row = mysql_fetch_row(res)))
@@ -714,7 +747,8 @@ void viewAppointments(MYSQL *conn)
             cout << row[0] << "\t | "
                  << row[1] << "\t\t | "
                  << row[2] << "\t\t | "
-                 << row[3] << endl;
+                 << row[3] << "\t | "
+                 << row[4] << endl;
         }
         cout << "=====================================================\n";
         mysql_free_result(res);
@@ -835,6 +869,69 @@ void deleteAppointment(MYSQL *conn)
     else
     {
         cout << "Error: " << mysql_error(conn) << endl;
+    }
+}
+
+void appointment_status_update(MYSQL *conn)
+{
+    int app_id;
+    cout << "enter appointment id: " << endl;
+    cin >> app_id;
+    string query = "select Appointment_id from Appointments where Appointment_id =" + to_string(app_id);
+
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        MYSQL_RES *res = mysql_store_result(conn);
+        if (res != nullptr)
+        {
+            if (mysql_num_rows(res) == 0)
+            {
+                cout << "appointment not found: " << endl;
+                mysql_free_result(res);
+                return;
+            }
+            mysql_free_result(res);
+        }
+    }
+    else
+    {
+        cout << "query failed : " << mysql_error(conn) << endl;
+        return;
+    }
+    cout << "\n1. Booked " << endl;
+    cout << "2. Completed " << endl;
+    cout << "3. Cancelled " << endl;
+    cout << "enter your choice : " << endl;
+    int choice;
+    cin >> choice;
+
+    string status;
+    if (choice == 1)
+    {
+        status = "Booked";
+    }
+    else if (choice == 2)
+    {
+        status = "Completed";
+    }
+    else if (choice == 3)
+    {
+        status = "Cancelled";
+    }
+    else
+    {
+        cout << "invalid choice : " << endl;
+        return;
+    }
+
+    string update_query = "update Appointments set Appointment_Status = '" + status + "' where Appointment_id=" + to_string(app_id);
+    if (mysql_query(conn, update_query.c_str()) == 0)
+    {
+        cout << "Status update succesfully : " << endl;
+    }
+    else
+    {
+        cout << "Update unsuccesfull " << mysql_error(conn) << endl;
     }
 }
 
