@@ -3,6 +3,7 @@
 #include <string>
 #include <limits>
 #include <cstring>
+#include <limits>
 
 using namespace std;
 
@@ -19,7 +20,9 @@ void appointment_management(MYSQL *conn);
 void medicine_management(MYSQL *conn);
 
 void dashboard(MYSQL *conn); // dashboard function prototypes
-void dashboard(MYSQL *conn)  // query function
+
+void medical_record_menu(MYSQL *conn);
+void dashboard(MYSQL *conn) // query function
 {
     string query = "SELECT (SELECT COUNT(*) FROM Doctors) AS Total_Doctors, (SELECT COUNT(*) FROM Patients) AS Total_Patients, (SELECT COUNT(*) FROM Appointments) AS Total_Appointments, (SELECT COUNT(*) FROM Medicine) AS Total_Medicines, (SELECT COALESCE(SUM(Stock_quantity), 0) FROM Medicine) AS Total_Stock, (SELECT COUNT(*) FROM Medicine WHERE Stock_quantity <= 10) AS Low_Stock_Medicines";
     if (mysql_query(conn, query.c_str()) == 0)
@@ -73,7 +76,8 @@ int main()
         cout << "3. Patient Management\n";
         cout << "4. Appointment Management\n";
         cout << "5. Medicine Management\n";
-        cout << "6. Exit\n";
+        cout << "6. Medical Records Menu\n";
+        cout << "7. Exit\n";
         cout << "Enter your choice: ";
         cin >> choice;
 
@@ -99,12 +103,15 @@ int main()
             medicine_management(conn);
             break;
         case 6:
+            medical_record_menu(conn);
+            break;
+        case 7:
             cout << "\nExiting system... Thank you!\n";
             break;
         default:
             cout << "\nInvalid choice! Please try again.\n";
         }
-    } while (choice != 6);
+    } while (choice != 7);
 
     mysql_close(conn);
     return 0;
@@ -940,6 +947,8 @@ void addMedicine(MYSQL *conn);
 void viewMedicines(MYSQL *conn);
 void update_medicine(MYSQL *conn);
 void deleteMedicine(MYSQL *conn);
+void medicine_search(MYSQL *conn);
+void low_stock(MYSQL *conn);
 
 void medicine_management(MYSQL *conn)
 {
@@ -951,7 +960,9 @@ void medicine_management(MYSQL *conn)
         cout << "2. View All Medicines\n";
         cout << "3. Update medicine info\n";
         cout << "4. Delete Medicine\n";
-        cout << "5. Back to Main Menu\n";
+        cout << "5. medicine search\n";
+        cout << "6. View Low Stock Medicines\n";
+        cout << "7. Back to Main Menu\n";
         cout << "Enter your choice: ";
         cin >> choice;
 
@@ -970,12 +981,17 @@ void medicine_management(MYSQL *conn)
             deleteMedicine(conn);
             break;
         case 5:
+            medicine_search(conn);
+            break;
+        case 6:
+            low_stock(conn);
+        case 7:
             cout << "Returning to Main Menu...\n";
             break;
         default:
             cout << "Invalid choice! Try again.\n";
         }
-    } while (choice != 5);
+    } while (choice != 7);
 }
 
 void addMedicine(MYSQL *conn)
@@ -985,13 +1001,33 @@ void addMedicine(MYSQL *conn)
     int stock;
     cout << "\n--- Add New Medicine ---\n";
     cin.ignore();
+
     cout << "Enter Medicine Name: ";
     getline(cin, name);
+    if (name.empty())
+    {
+        cout << "\nerror!...medicine name can not be empty : " << endl;
+        return;
+    }
 
     cout << "Enter Price: ";
-    cin >> price;
+    // cin >> price;
+    if (!(cin >> price) || (price <= 0))
+    {
+        cout << "\ninvalid price\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
     cout << "Enter Stock Quantity: ";
-    cin >> stock;
+    // cin >> stock;
+    if (!(cin >> stock) || stock < 0)
+    {
+        cout << "\ninvalid stock\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
 
     string query = "INSERT INTO Medicine (medicine_Name, Price, Stock_quantity) VALUES ('" + name + "', " + to_string(price) + ", " + to_string(stock) + ")";
 
@@ -1077,7 +1113,14 @@ void update_medicine(MYSQL *conn)
     {
         double price;
         cout << "Enter new price: ";
-        cin >> price;
+        // cin >> price;
+        if (!(cin >> price) || (price <= 0))
+        {
+            cout << "\ninvalid new price " << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return;
+        }
         query = "UPDATE Medicine SET Price = " + to_string(price) + " WHERE Med_id = " + to_string(id);
         break;
     }
@@ -1085,7 +1128,14 @@ void update_medicine(MYSQL *conn)
     {
         int quantity;
         cout << "Enter new stock quantity: ";
-        cin >> quantity;
+        // cin >> quantity;
+        if (!(cin >> quantity) || (quantity < 0))
+        {
+            cout << "\ninvalid new stock input : " << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return;
+        }
         query = "UPDATE Medicine SET Stock_quantity = " + to_string(quantity) + " WHERE Med_id = " + to_string(id);
         break;
     }
@@ -1098,10 +1148,33 @@ void update_medicine(MYSQL *conn)
         cout << "Enter new medicine name: ";
         // cin.ignore();
         getline(cin, name);
+        if ((name == ""))
+        {
+            cout << "\ninvalid name input: " << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return;
+        }
+
         cout << "Enter new price: ";
-        cin >> price;
+        // cin >> price;
+        if (!(cin >> price) || (price <= 0))
+        {
+            cout << "\ninvalid new price " << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return;
+        }
+
         cout << "Enter new stock quantity: ";
-        cin >> quantity;
+        // cin >> quantity;
+        if (!(cin >> quantity) || (quantity < 0))
+        {
+            cout << "\ninvalid new stock input : " << endl;
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            return;
+        }
 
         query = "UPDATE Medicine SET medicine_Name = '" + name + "', Price = " + to_string(price) + ", Stock_quantity = " + to_string(quantity) + " WHERE Med_id = " + to_string(id);
         break;
@@ -1150,5 +1223,211 @@ void deleteMedicine(MYSQL *conn)
     else
     {
         cout << "Error: " << mysql_error(conn) << endl;
+    }
+}
+
+void medicine_search(MYSQL *conn)
+{
+    string name;
+    cout << "enter medicine name : " << endl;
+    cin.ignore();
+    getline(cin, name);
+    string query = "select * from Medicine where medicine_Name like '%" + name + "%' ";
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        MYSQL_RES *res = mysql_store_result(conn);
+        if (res == nullptr)
+        {
+            cout << "error..." << mysql_error(conn);
+            return;
+        }
+        if (mysql_num_rows(res) == 0)
+        {
+            cout << "\nno medicine found : " << endl;
+            mysql_free_result(res);
+            return;
+        }
+        MYSQL_ROW row;
+        cout << "              medicine search result      " << endl;
+        cout << "=====================================================\n";
+        cout << "Med ID\t | Medicine Name\t | Price\t | Stock\n";
+        cout << "-----------------------------------------------------\n";
+        while ((row = mysql_fetch_row(res)))
+        {
+            cout << (row[0] ? row[0] : "NULL") << "\t | "
+                 << (row[1] ? row[1] : "NULL") << "\t\t | "
+                 << (row[2] ? row[2] : "NULL") << "\t | "
+                 << (row[3] ? row[3] : "NULL") << endl;
+        }
+        mysql_free_result(res);
+    }
+    else
+    {
+        cout << "error..." << mysql_error(conn) << endl;
+    }
+}
+
+void low_stock(MYSQL *conn)
+{
+    string query = "SELECT * FROM Medicine WHERE Stock_quantity <= 10";
+
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        MYSQL_RES *res = mysql_store_result(conn);
+
+        if (res == nullptr)
+        {
+            cout << "\n[Error] " << mysql_error(conn) << endl;
+            return;
+        }
+
+        if (mysql_num_rows(res) == 0)
+        {
+            cout << "\nNo low stock medicines found!\n";
+        }
+        else
+        {
+            MYSQL_ROW row;
+            cout << "\n--- Low Stock Medicines ---\n";
+
+            while ((row = mysql_fetch_row(res)))
+            {
+                cout << "Medicine ID: " << row[0] << endl;
+                cout << "Medicine Name: " << row[1] << endl;
+                cout << "Price: " << row[2] << endl;
+                cout << "Stock Quantity: " << row[3] << endl;
+                cout << "-------------------------\n";
+            }
+        }
+
+        mysql_free_result(res);
+    }
+    else
+    {
+        cout << "\n[Error] Query failed: " << mysql_error(conn) << endl;
+    }
+}
+
+void addmedicalrecord(MYSQL *conn);
+void viewmedicalrecord(MYSQL *conn);
+
+void medical_record_menu(MYSQL *conn)
+{
+    int choice;
+
+    do
+    {
+        cout << "\n--- Medical Records Menu ---\n";
+        cout << "1. Add Medical Record\n";
+        cout << "2. View All Medical Records\n";
+        cout << "3. Back to Main Menu\n";
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        if (choice == 1)
+        {
+            addmedicalrecord(conn);
+        }
+        else if (choice == 2)
+        {
+            viewmedicalrecord(conn);
+        }
+        else if (choice == 3)
+        {
+            cout << "\nReturning to Main Menu...\n";
+        }
+        else
+        {
+            cout << "\nInvalid choice!\n";
+        }
+
+    } while (choice != 3);
+}
+
+void addmedicalrecord(MYSQL *conn)
+{
+    int patient_id, doctor_id;
+    string diagnosis, treatment, record_date;
+
+    cout << "\n--- Add Medical Record ---\n";
+
+    cout << "Enter Patient ID: ";
+    cin >> patient_id;
+
+    cout << "Enter Doctor ID: ";
+    cin >> doctor_id;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    cout << "Enter Diagnosis: ";
+    getline(cin, diagnosis);
+
+    cout << "Enter Treatment: ";
+    getline(cin, treatment);
+
+    cout << "Enter Record Date (YYYY-MM-DD): ";
+    getline(cin, record_date);
+
+    string query = "INSERT INTO Medical_Records "
+                   "(Patient_id, Doctor_id, Diagnosis, Treatment, Record_date) VALUES (" +
+                   to_string(patient_id) + ", " +
+                   to_string(doctor_id) + ", '" +
+                   diagnosis + "', '" +
+                   treatment + "', '" +
+                   record_date + "')";
+
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        cout << "\n[Success] Medical Record Added Successfully!\n";
+    }
+    else
+    {
+        cout << "\n[Error] Failed to Add Medical Record: "
+             << mysql_error(conn) << endl;
+    }
+}
+
+void viewmedicalrecord(MYSQL *conn)
+{
+    string query = "SELECT * FROM Medical_Records";
+
+    if (mysql_query(conn, query.c_str()) == 0)
+    {
+        MYSQL_RES *res = mysql_store_result(conn);
+
+        if (res == nullptr)
+        {
+            cout << "\n[Error] " << mysql_error(conn) << endl;
+            return;
+        }
+
+        if (mysql_num_rows(res) == 0)
+        {
+            cout << "\nNo Medical Records Found!\n";
+        }
+        else
+        {
+            MYSQL_ROW row;
+            cout << "\n--- All Medical Records ---\n";
+
+            while ((row = mysql_fetch_row(res)))
+            {
+                cout << "Record ID: " << row[0] << endl;
+                cout << "Patient ID: " << row[1] << endl;
+                cout << "Doctor ID: " << row[2] << endl;
+                cout << "Diagnosis: " << row[3] << endl;
+                cout << "Treatment: " << row[4] << endl;
+                cout << "Record Date: " << row[5] << endl;
+                cout << "---------------------------\n";
+            }
+        }
+
+        mysql_free_result(res);
+    }
+    else
+    {
+        cout << "\n[Error] Query failed: "
+             << mysql_error(conn) << endl;
     }
 }
