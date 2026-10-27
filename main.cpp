@@ -8,6 +8,8 @@
 #include <ctime>
 #include <cctype>
 #include <cstdlib>
+#include <algorithm>
+#include <cctype>
 
 using namespace std;
 
@@ -1039,7 +1041,12 @@ void addAppointment(MYSQL *conn)
 // View Appointments Function (SELECT query)
 void viewAppointments(MYSQL *conn)
 {
-    string query = "SELECT * FROM Appointments";
+    string query =
+        "SELECT a.Appointment_id, p.patient_name, d.Name, "
+        "a.Appointment_date, a.Appointment_Status "
+        "FROM Appointments a "
+        "JOIN Patients p ON a.Patient_id = p.Patient_id "
+        "JOIN Doctors d ON a.Doctor_id = d.Doctor_id";
 
     if (mysql_query(conn, query.c_str()) != 0)
     {
@@ -1056,20 +1063,20 @@ void viewAppointments(MYSQL *conn)
         return;
     }
 
-    cout << "\n=====================================================\n";
-    cout << "                 APPOINTMENT LIST                    \n";
-    cout << "=====================================================\n";
-    cout << "Appt ID | Patient ID | Doctor ID | Date       | Status\n";
-    cout << "-----------------------------------------------------\n";
+    cout << "\n===============================================================\n";
+    cout << "                     APPOINTMENT LIST\n";
+    cout << "===============================================================\n";
+    cout << "Appt ID | Patient Name | Doctor Name | Date       | Status\n";
+    cout << "---------------------------------------------------------------\n";
 
     MYSQL_ROW row;
     int count = 0;
 
     while ((row = mysql_fetch_row(res)))
     {
-        cout << (row[0] ? row[0] : "NULL") << "\t | "
-             << (row[1] ? row[1] : "NULL") << "\t     | "
-             << (row[2] ? row[2] : "NULL") << "\t    | "
+        cout << (row[0] ? row[0] : "NULL") << "      | "
+             << (row[1] ? row[1] : "NULL") << " | "
+             << (row[2] ? row[2] : "NULL") << " | "
              << (row[3] ? row[3] : "NULL") << " | "
              << (row[4] ? row[4] : "NULL") << endl;
 
@@ -1081,13 +1088,11 @@ void viewAppointments(MYSQL *conn)
         cout << "No appointments found." << endl;
     }
 
-    cout << "=====================================================\n";
+    cout << "===============================================================\n";
     cout << "Total appointments: " << count << endl;
 
     mysql_free_result(res);
 }
-
-
 
 void update_appointment(MYSQL *conn)
 {
@@ -2117,7 +2122,13 @@ void updatemedicalrecord(MYSQL *conn)
     string diagnosis, treatment, record_date;
 
     cout << "\nEnter Record ID to update: ";
-    cin >> record_id;
+    if (!(cin >> record_id) || record_id <= 0)
+    {
+        cout << "\n[Error] Invalid Record ID. Enter a positive number.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     string check_query = "SELECT * FROM Medical_Records WHERE Record_id = " + to_string(record_id);
@@ -2149,8 +2160,15 @@ void updatemedicalrecord(MYSQL *conn)
     cout << "2. Update Treatment\n";
     cout << "3. Update Record Date\n";
     cout << "4. Update All Fields\n";
+
     cout << "Enter your choice: ";
-    cin >> choice;
+    if (!(cin >> choice))
+    {
+        cout << "\n[Error] Menu choice must be a number.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     string query;
@@ -2159,6 +2177,11 @@ void updatemedicalrecord(MYSQL *conn)
     {
         cout << "Enter new Diagnosis: ";
         getline(cin, diagnosis);
+        if (diagnosis.empty())
+        {
+            cout << "\n[Error] Diagnosis cannot be empty.\n";
+            return;
+        }
         query = "UPDATE Medical_Records SET Diagnosis = '" + diagnosis +
                 "' WHERE Record_id = " + to_string(record_id);
     }
@@ -2166,6 +2189,11 @@ void updatemedicalrecord(MYSQL *conn)
     {
         cout << "Enter new Treatment: ";
         getline(cin, treatment);
+        if (treatment.empty())
+        {
+            cout << "\n[Error] Treatment cannot be empty.\n";
+            return;
+        }
         query = "UPDATE Medical_Records SET Treatment = '" + treatment +
                 "' WHERE Record_id = " + to_string(record_id);
     }
@@ -2173,6 +2201,45 @@ void updatemedicalrecord(MYSQL *conn)
     {
         cout << "Enter new Record Date (YYYY-MM-DD): ";
         getline(cin, record_date);
+        if (record_date.length() != 10 ||
+            record_date[4] != '-' ||
+            record_date[7] != '-')
+        {
+            cout << "\n[Error] Invalid date format. Use YYYY-MM-DD.\n";
+            return;
+        }
+
+        if (!all_of(record_date.begin(), record_date.end(),
+                    [i = 0](char c) mutable
+                    { return i == 4 || i == 7 ? c == '-' : (i++, isdigit(c)); }))
+        {
+            cout << "\n[Error] Invalid date format. Use YYYY-MM-DD.\n";
+            return;
+        }
+
+        int year = stoi(record_date.substr(0, 4));
+        int month = stoi(record_date.substr(5, 2));
+        int day = stoi(record_date.substr(8, 2));
+
+        int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+        if (year < 1 || month < 1 || month > 12)
+        {
+            cout << "\n[Error] Invalid date!\n";
+            return;
+        }
+
+        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0))
+        {
+            days_in_month[2] = 29;
+        }
+
+        if (day < 1 || day > days_in_month[month])
+        {
+            cout << "\n[Error] Invalid date!\n";
+            return;
+        }
+
         query = "UPDATE Medical_Records SET Record_date = '" + record_date +
                 "' WHERE Record_id = " + to_string(record_id);
     }
@@ -2181,11 +2248,62 @@ void updatemedicalrecord(MYSQL *conn)
         cout << "Enter new Diagnosis: ";
         getline(cin, diagnosis);
 
+        if (diagnosis.empty())
+        {
+            cout << "\n[Error] Diagnosis cannot be empty.\n";
+            return;
+        }
+
         cout << "Enter new Treatment: ";
         getline(cin, treatment);
+        if (treatment.empty())
+        {
+            cout << "\n[Error] Treatment cannot be empty.\n";
+            return;
+        }
 
         cout << "Enter new Record Date (YYYY-MM-DD): ";
         getline(cin, record_date);
+        if (record_date.length() != 10 ||
+            record_date[4] != '-' ||
+            record_date[7] != '-')
+        {
+            cout << "\n[Error] Invalid date format. Use YYYY-MM-DD.\n";
+            return;
+        }
+
+        if (!all_of(record_date.begin(), record_date.end(),
+                    [i = 0](char c) mutable
+                    {
+                        return (i == 4 || i == 7) ? (i++, c == '-') : (i++, isdigit(static_cast<unsigned char>(c)));
+                    }))
+        {
+            cout << "\n[Error] Invalid date format. Use YYYY-MM-DD.\n";
+            return;
+        }
+
+        int year = stoi(record_date.substr(0, 4));
+        int month = stoi(record_date.substr(5, 2));
+        int day = stoi(record_date.substr(8, 2));
+
+        int days_in_month[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+        if (year < 1 || month < 1 || month > 12)
+        {
+            cout << "\n[Error] Invalid date!\n";
+            return;
+        }
+
+        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0))
+        {
+            days_in_month[2] = 29;
+        }
+
+        if (day < 1 || day > days_in_month[month])
+        {
+            cout << "\n[Error] Invalid date!\n";
+            return;
+        }
 
         query = "UPDATE Medical_Records SET Diagnosis = '" + diagnosis +
                 "', Treatment = '" + treatment +
@@ -2214,7 +2332,15 @@ void deletemedicalrecord(MYSQL *conn)
     char confirm;
 
     cout << "\nEnter Record ID to delete: ";
-    cin >> record_id;
+    // cin >> record_id;
+    if (!(cin >> record_id) || record_id <= 0)
+    {
+        cout << "\n[Error] Invalid Record ID. Enter a positive number.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     string check_query = "SELECT Record_id FROM Medical_Records WHERE Record_id = " + to_string(record_id);
 
@@ -2242,7 +2368,15 @@ void deletemedicalrecord(MYSQL *conn)
     mysql_free_result(res);
 
     cout << "Are you sure you want to delete this record? (Y/N): ";
-    cin >> confirm;
+    // cin >> confirm;
+    if (!(cin >> confirm) || (confirm != 'Y' && confirm != 'y' && confirm != 'N' && confirm != 'n'))
+    {
+        cout << "\n[Error] Enter Y or N only.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     if (confirm == 'Y' || confirm == 'y')
     {
