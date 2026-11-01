@@ -2006,23 +2006,80 @@ void addmedicalrecord(MYSQL *conn)
     cout << "Enter Record Date (YYYY-MM-DD): ";
     getline(cin, record_date);
 
+    // Step 1: Replace String Concatenation with SQL Placeholders
     string query = "INSERT INTO Medical_Records "
-                   "(Patient_id, Doctor_id, Diagnosis, Treatment, Record_date) VALUES (" +
-                   to_string(patient_id) + ", " +
-                   to_string(doctor_id) + ", '" +
-                   diagnosis + "', '" +
-                   treatment + "', '" +
-                   record_date + "')";
+                   "(Patient_id, Doctor_id, Diagnosis, Treatment, Record_date) "
+                   "VALUES (?, ?, ?, ?, ?)";
 
-    if (mysql_query(conn, query.c_str()) == 0)
+    // Step 2: Initialize Prepared Statement
+    MYSQL_STMT *stmt;
+    stmt = mysql_stmt_init(conn);
+    if (stmt == nullptr)
+    {
+        cout << "Initialization failed" << mysql_error(conn) << endl;
+        return;
+    }
+
+    // Step 3: Prepare SQL Query
+    if (mysql_stmt_prepare(stmt, query.c_str(), query.length()) != 0)
+    {
+        cout << "\n[Error] Query Preparation Failed: "
+             << mysql_stmt_error(stmt) << endl;
+        mysql_stmt_close(stmt);
+        return;
+    }
+
+    // Step 4: Bind Variables using MYSQL_BIND
+    MYSQL_BIND bind[5];
+    memset(bind, 0, sizeof(bind));
+
+    // Step 5: Bind Integer Variables
+    bind[0].buffer_type = MYSQL_TYPE_LONG;
+    bind[0].buffer = &patient_id;
+
+    bind[1].buffer_type = MYSQL_TYPE_LONG;
+    bind[1].buffer = &doctor_id;
+
+    // Step 6: Bind String Variables
+    unsigned long diagnosis_length = diagnosis.length();
+    bind[2].buffer_type = MYSQL_TYPE_STRING;
+    // bind[2].buffer = &diagnosis[0];
+    bind[2].buffer = const_cast<char *>(diagnosis.c_str());
+    bind[2].buffer_length = diagnosis_length;
+
+    unsigned long treatment_length = treatment.length();
+    unsigned long record_date_length = record_date.length();
+
+    bind[3].buffer_type = MYSQL_TYPE_STRING;
+    bind[3].buffer = const_cast<char *>(treatment.c_str());
+    bind[3].buffer_length = treatment_length;
+
+    bind[4].buffer_type = MYSQL_TYPE_STRING;
+    bind[4].buffer = const_cast<char *>((record_date.c_str()));
+    bind[4].buffer_length = record_date_length;
+
+    // Step 7 : Bind Parameters
+    if (mysql_stmt_bind_param(stmt, bind) != 0)
+    {
+        cout << "\n[Error] Binding Failed: "
+             << mysql_stmt_error(stmt) << endl;
+
+        mysql_stmt_close(stmt);
+        return;
+    }
+
+    // Step 8: Execute Prepared Statement
+    if (mysql_stmt_execute(stmt) == 0)
     {
         cout << "\n[Success] Medical Record Added Successfully!\n";
     }
     else
     {
         cout << "\n[Error] Failed to Add Medical Record: "
-             << mysql_error(conn) << endl;
+             << mysql_stmt_error(stmt) << endl;
     }
+    // Step 9: Close Prepared Statement
+    mysql_stmt_close(stmt);
 }
 
 void viewmedicalrecord(MYSQL *conn)
