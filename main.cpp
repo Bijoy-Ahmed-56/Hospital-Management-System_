@@ -2188,30 +2188,60 @@ void updatemedicalrecord(MYSQL *conn)
     }
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-    string check_query = "SELECT * FROM Medical_Records WHERE Record_id = " + to_string(record_id);
-
-    if (mysql_query(conn, check_query.c_str()) != 0)
+    string check_query = "SELECT * FROM Medical_Records WHERE Record_id = ? ";
+    MYSQL_STMT *check_stmt = mysql_stmt_init(conn);
+    if (check_stmt == nullptr)
     {
-        cout << "\n[Error] " << mysql_error(conn) << endl;
+        cout << "\nstatment initilization failed : " << mysql_error(conn);
         return;
     }
 
-    MYSQL_RES *res = mysql_store_result(conn);
-
-    if (res == nullptr)
+    if (mysql_stmt_prepare(check_stmt, check_query.c_str(), check_query.length()) != 0)
     {
-        cout << "\n[Error] " << mysql_error(conn) << endl;
+        cout << "statement preperation failed : " << mysql_stmt_error(check_stmt) << endl;
+        mysql_stmt_close(check_stmt);
         return;
     }
 
-    if (mysql_num_rows(res) == 0)
+    MYSQL_BIND check_bind[1];
+    memset(check_bind, 0, sizeof(check_bind));
+
+    check_bind[0].buffer_type = MYSQL_TYPE_LONG;
+    check_bind[0].buffer = &record_id;
+
+    if (mysql_stmt_bind_param(check_stmt, check_bind) != 0)
     {
-        cout << "\nNo medical record found with ID: " << record_id << endl;
-        mysql_free_result(res);
+        cout << "\n[Error] Binding Failed: "
+             << mysql_stmt_error(check_stmt) << endl;
+        mysql_stmt_close(check_stmt);
         return;
     }
 
-    mysql_free_result(res);
+    if (mysql_stmt_execute(check_stmt) != 0)
+    {
+        cout << "\n[Error] Execution Failed: "
+             << mysql_stmt_error(check_stmt) << endl;
+        mysql_stmt_close(check_stmt);
+        return;
+    }
+
+    if (mysql_stmt_store_result(check_stmt) != 0)
+    {
+        cout << "\n[Error] Result Storage Failed: "
+             << mysql_stmt_error(check_stmt) << endl;
+        mysql_stmt_close(check_stmt);
+        return;
+    }
+
+    if (mysql_stmt_num_rows(check_stmt) == 0)
+    {
+        cout << "\nNo medical record found with ID: "
+             << record_id << endl;
+
+        mysql_stmt_close(check_stmt);
+        return;
+    }
+    mysql_stmt_close(check_stmt);
 
     cout << "\n1. Update Diagnosis\n";
     cout << "2. Update Treatment\n";
@@ -2239,8 +2269,7 @@ void updatemedicalrecord(MYSQL *conn)
             cout << "\n[Error] Diagnosis cannot be empty.\n";
             return;
         }
-        query = "UPDATE Medical_Records SET Diagnosis = '" + diagnosis +
-                "' WHERE Record_id = " + to_string(record_id);
+        query = "UPDATE Medical_Records SET Diagnosis = ? WHERE Record_id = ?";
     }
     else if (choice == 2)
     {
@@ -2251,8 +2280,7 @@ void updatemedicalrecord(MYSQL *conn)
             cout << "\n[Error] Treatment cannot be empty.\n";
             return;
         }
-        query = "UPDATE Medical_Records SET Treatment = '" + treatment +
-                "' WHERE Record_id = " + to_string(record_id);
+        query = "UPDATE Medical_Records SET Treatment = ? WHERE Record_id = ?";
     }
     else if (choice == 3)
     {
@@ -2268,12 +2296,16 @@ void updatemedicalrecord(MYSQL *conn)
 
         if (!all_of(record_date.begin(), record_date.end(),
                     [i = 0](char c) mutable
-                    { return i == 4 || i == 7 ? c == '-' : (i++, isdigit(c)); }))
+                    {
+                        return (i == 4 || i == 7)
+                                   ? (i++, c == '-')
+                                   : (i++, isdigit(static_cast<unsigned char>(c)));
+                    }))
         {
             cout << "\n[Error] Invalid date format. Use YYYY-MM-DD.\n";
             return;
         }
-
+        
         int year = stoi(record_date.substr(0, 4));
         int month = stoi(record_date.substr(5, 2));
         int day = stoi(record_date.substr(8, 2));
@@ -2297,8 +2329,7 @@ void updatemedicalrecord(MYSQL *conn)
             return;
         }
 
-        query = "UPDATE Medical_Records SET Record_date = '" + record_date +
-                "' WHERE Record_id = " + to_string(record_id);
+        query = "UPDATE Medical_Records SET Record_date = ? WHERE Record_id = ?";
     }
     else if (choice == 4)
     {
@@ -2362,10 +2393,8 @@ void updatemedicalrecord(MYSQL *conn)
             return;
         }
 
-        query = "UPDATE Medical_Records SET Diagnosis = '" + diagnosis +
-                "', Treatment = '" + treatment +
-                "', Record_date = '" + record_date +
-                "' WHERE Record_id = " + to_string(record_id);
+        query = "UPDATE Medical_Records SET Diagnosis = ?, "
+                "Treatment = ?, Record_date = ? WHERE Record_id = ?";
     }
     else
     {
@@ -2373,14 +2402,108 @@ void updatemedicalrecord(MYSQL *conn)
         return;
     }
 
-    if (mysql_query(conn, query.c_str()) == 0)
+    // Step 1: Initialize Prepared Statement
+    MYSQL_STMT *stmt = mysql_stmt_init(conn);
+
+    if (stmt == nullptr)
+    {
+        cout << "\n[Error] Initialization Failed: "
+             << mysql_error(conn) << endl;
+        return;
+    }
+
+    // Step 2: Prepare SQL Query
+    if (mysql_stmt_prepare(stmt, query.c_str(), query.length()) != 0)
+    {
+        cout << "\n[Error] Query Preparation Failed: "
+             << mysql_stmt_error(stmt) << endl;
+
+        mysql_stmt_close(stmt);
+        return;
+    }
+
+    // Step 3: Create MYSQL_BIND Array
+    MYSQL_BIND bind[4];
+    memset(bind, 0, sizeof(bind));
+
+    // String Length
+    unsigned long diagnosis_length = diagnosis.length();
+    unsigned long treatment_length = treatment.length();
+    unsigned long record_date_length = record_date.length();
+
+    // Choice 1: Update Diagnosis
+    if (choice == 1)
+    {
+        bind[0].buffer_type = MYSQL_TYPE_STRING;
+        bind[0].buffer = const_cast<char *>(diagnosis.c_str());
+        bind[0].buffer_length = diagnosis_length;
+
+        bind[1].buffer_type = MYSQL_TYPE_LONG;
+        bind[1].buffer = &record_id;
+    }
+
+    // Choice 2: Update Treatment
+    else if (choice == 2)
+    {
+        bind[0].buffer_type = MYSQL_TYPE_STRING;
+        bind[0].buffer = const_cast<char *>(treatment.c_str());
+        bind[0].buffer_length = treatment_length;
+
+        bind[1].buffer_type = MYSQL_TYPE_LONG;
+        bind[1].buffer = &record_id;
+    }
+
+    // Choice 3: Update Record Date
+    else if (choice == 3)
+    {
+        bind[0].buffer_type = MYSQL_TYPE_STRING;
+        bind[0].buffer = const_cast<char *>(record_date.c_str());
+        bind[0].buffer_length = record_date_length;
+
+        bind[1].buffer_type = MYSQL_TYPE_LONG;
+        bind[1].buffer = &record_id;
+    }
+
+    // Choice 4: Update All Fields
+    else if (choice == 4)
+    {
+        bind[0].buffer_type = MYSQL_TYPE_STRING;
+        bind[0].buffer = const_cast<char *>(diagnosis.c_str());
+        bind[0].buffer_length = diagnosis_length;
+
+        bind[1].buffer_type = MYSQL_TYPE_STRING;
+        bind[1].buffer = const_cast<char *>(treatment.c_str());
+        bind[1].buffer_length = treatment_length;
+
+        bind[2].buffer_type = MYSQL_TYPE_STRING;
+        bind[2].buffer = const_cast<char *>(record_date.c_str());
+        bind[2].buffer_length = record_date_length;
+
+        bind[3].buffer_type = MYSQL_TYPE_LONG;
+        bind[3].buffer = &record_id;
+    }
+    // Step 5: Bind Parameters
+    if (mysql_stmt_bind_param(stmt, bind) != 0)
+    {
+        cout << "\n[Error] Binding Failed: "
+             << mysql_stmt_error(stmt) << endl;
+
+        mysql_stmt_close(stmt);
+        return;
+    }
+    // Step 6: Execute Prepared Statement
+    if (mysql_stmt_execute(stmt) == 0)
     {
         cout << "\n[Success] Medical Record updated successfully!\n";
     }
     else
     {
-        cout << "\n[Error] Update failed: " << mysql_error(conn) << endl;
+        cout << "\n[Error] Update failed: "
+             << mysql_stmt_error(stmt) << endl;
     }
+
+    // Step 7: Close Prepared Statement
+    mysql_stmt_close(stmt);
 }
 
 void deletemedicalrecord(MYSQL *conn)
