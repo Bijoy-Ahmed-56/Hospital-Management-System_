@@ -1,37 +1,131 @@
-# Hospital Management System 🏥
+# Hospital Management System
 
-A robust, console-based **Hospital Management System** built using **C++** and **MySQL** database integration. This project is designed to handle core hospital operations efficiently through a command-line interface.
+A console-based Hospital Management System developed using **C++ and MySQL**. This project helps manage hospital operations, including doctors, patients, appointments, medicines, and medical records.
 
----
+## Features
 
-## 🚀 Features
+### 1. Dashboard
 
-### 1. Doctor Management Module
+- Total Doctors
+- Total Patients
+- Total Appointments
+- Total Medicines
+- Total Medicine Stock
+- Low Stock Medicines
 
-- **Add Doctor:** Register new doctors with their name, specialization, and contact phone.
-- **View Doctors:** Display a formatted list of all registered doctors from the MySQL database.
-- **Delete Doctor:** Remove a doctor record by their unique ID.
+### 2. Doctor Management
 
-### 2. Patient Management Module
+- Add new doctor
+- View all doctors
+- Update doctor information
+- Delete doctor
+- Search doctors by specialization
 
-- **Add Patient:** Register patient details including name, age, gender, and phone number.
-- **View Patients:** Retrieve and display all patient records in a clean tabular format.
-- **Delete Patient:** Delete a patient record securely using their ID.
+### 3. Patient Management
 
----
+- Add new patient
+- View all patients
+- Update patient information
+- Delete patient
+- Search patient by ID
 
-## 🛠️ Tech Stack
+### 4. Appointment Management
 
-- **Language:** C++
-- **Database:** MySQL
-- **Database Connector:** MySQL C API (`<mysql.h>`)
-- **Version Control:** Git & GitHub
+- Book appointments
+- View all appointments
+- Update appointment status
+- Appointment statuses: Booked, Completed, Cancelled
+- Prevent duplicate doctor appointments on the same date
 
----
+### 5. Medicine Management
 
-## ⚙️ How to Run the Project
+- Add new medicine
+- View all medicines
+- Update medicine information
+- Delete medicine
+- Search medicine by name
+- View low-stock medicines
 
-1. **Clone the Repository:**
-   ```bash
-   git clone [https://github.com/Bijoy-Ahmed-56/Hospital-Management-System.git](https://github.com/Bijoy-Ahmed-56/Hospital-Management-System.git)
-   ```
+### 6. Medical Records Management
+
+- Add medical records
+- View all medical records
+- Search medical records
+- Update medical records
+- Delete medical records
+
+## Technologies Used
+
+- C++
+- MySQL
+- MySQL Connector/C
+- Visual Studio Code
+- MySQL Workbench
+
+## Project Structure
+
+```text
+Hospital-Management-System/
+│
+├── database/
+│   ├── Hospital_management_db.sql
+│   └── sample_data.sql
+│
+├── main.cpp
+├── README.md
+└── libmysql.dll
+```
+
+## Database Setup
+
+1. Open MySQL Workbench.
+2. Open `database/Hospital_management_db.sql`.
+3. Execute the SQL script to create the database and tables.
+4. Optionally, execute `database/sample_data.sql` to insert sample medicine data.
+
+**Note:** Run the sample data script only once to avoid duplicate records.
+
+## Requirements
+
+- C++ Compiler (G++)
+- MySQL Server 8.0
+- MySQL Connector/C
+- Visual Studio Code or another C++ IDE
+
+## Configuration
+
+Before running the application, configure your MySQL connection details in `main.cpp`:
+
+- Host
+- Username
+- Password
+- Database name: `Hospital_management_db`
+
+Do not upload your actual database password to GitHub.
+
+## Compile and Run
+
+Compile the project using:
+
+```bash
+g++ main.cpp -o hospital -I"C:\Program Files\MySQL\MySQL Server 8.0\include" -L"C:\Program Files\MySQL\MySQL Server 8.0\lib" -lmysql
+```
+
+Run the application:
+
+```bash
+.\hospital.exe
+```
+
+Make sure `libmysql.dll` is available in the executable's directory or system PATH.
+
+## Security and Validation
+
+- Prepared Statements for user-input-dependent SQL queries
+- Input validation
+- Invalid ID handling
+- Appointment double-booking prevention
+- Medicine stock validation
+- Database error handling
+
+## Project Objective
