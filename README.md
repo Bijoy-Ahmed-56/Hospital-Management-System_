@@ -66,13 +66,16 @@ A console-based Hospital Management System developed using **C++** and **MySQL**
 ```text
 Hospital-Management-System/
 │
-├── database/
+├── Database/
 │   ├── Hospital_management_db.sql
-│   └── sample_data.sql
+│   └── sample.sql
 │
+├── .gitattributes
+├── .gitignore
 ├── main.cpp
-├── README.md
-└── libmysql.dll
+├── hospital.exe
+├── libmysql.dll
+└── README.md
 ```
 
 ## Requirements
@@ -87,13 +90,41 @@ Before running this project, make sure you have installed:
 
 ## Database Setup
 
-1. Open MySQL Workbench.
-2. Connect to your MySQL Server.
-3. Open `database/Hospital_management_db.sql`.
-4. Execute the SQL script to create the database and tables.
-5. (Optional) Open and execute `database/sample_data.sql` to insert sample medicine records.
+### 1. Create Database and Tables
 
-**Note:** Execute the sample data script only once to avoid duplicate records.
+1. Open MySQL Workbench or your preferred MySQL client.
+2. Open `Database/Hospital_management_db.sql`.
+3. Execute the SQL script to create the database and all five tables.
+
+The database contains the following tables:
+
+- Doctors
+- Patients
+- Appointments
+- Medicine
+- Medical_Records
+
+### 2. Insert Sample Data
+
+1. Open `Database/sample.sql`.
+2. Execute the script to insert sample medicine records into the `Medicine` table.
+
+The sample data includes:
+- Napa
+- Seclo
+- Histacin
+
+### 3. Verify Database
+
+Execute the following SQL commands:
+
+```sql
+USE Hospital_management_db;
+
+SHOW TABLES;
+
+SELECT * FROM Medicine;
+```
 
 ## Database Configuration
 
