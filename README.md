@@ -170,6 +170,15 @@ This project includes several practices to improve data handling and reliability
 - Medicine stock validation
 - Database error handling
 
+## ER Diagram
+
+The ER diagram illustrates the relationships between Doctors, Patients, Appointments, and Medical Records, along with the independent Medicine table.
+
+![Hospital Management System ER Diagram](mermaid-diagram.png)
+
+[View ER Diagram Source](Database/ER_Diagram.md)
+  
+
 ## Project Objective
 
 The objective of this project is to develop a console-based Hospital Management System that simplifies hospital operations through organized management of doctors, patients, appointments, medicines, and medical records.
